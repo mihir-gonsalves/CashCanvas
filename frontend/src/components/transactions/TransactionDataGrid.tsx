@@ -24,11 +24,12 @@ interface TransactionDataGridProps {
 // ========================
 
 const COLUMN_WIDTHS = {
-  DATE: 115,
+  DATE: 120,
   DESCRIPTION: 200,
   CATEGORIES: 300,
-  AMOUNT: 110,
-  ACCOUNT: 108,
+  AMOUNT: 120,
+  ACCOUNT: 120,
+  NOTES: 200,
   ACTIONS: 80,
 } as const;
 
@@ -188,6 +189,25 @@ function AccountCell({ value }: GridRenderCellParams) {
   );
 }
 
+function NotesCell({ value }: GridRenderCellParams) {
+  const notes = value as string;
+
+  return (
+    <Tooltip title={notes} placement="top-start">
+      <Typography
+        sx={{
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          width: '100%',
+        }}
+      >
+        {notes}
+      </Typography>
+    </Tooltip>
+  );
+}
+
 // ========================
 // MAIN COMPONENT
 // ========================
@@ -229,6 +249,12 @@ export function TransactionDataGrid({
       headerName: 'Account',
       width: COLUMN_WIDTHS.ACCOUNT,
       renderCell: AccountCell,
+    },
+    {
+      field: 'notes',
+      headerName: 'Notes',
+      width: COLUMN_WIDTHS.NOTES,
+      renderCell: NotesCell,
     },
     {
       field: 'actions',

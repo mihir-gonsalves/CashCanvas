@@ -162,11 +162,11 @@ Core modules:
 # Create Virtual Environment (only do this once)
 python3 -m venv .venv
 
-# Install Python dependencies (only do this once)
-pip install -r requirements.txt
-
 # Activate Virtual Environemnt
 source .venv/bin/activate
+
+# Install Python dependencies (only do this once)
+pip install -r requirements.txt
 
 # Run FastAPI development server
 uvicorn app.main:app --reload

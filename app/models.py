@@ -81,7 +81,8 @@ class Transaction(Base):
     description = Column(String, nullable=False, index=True)
     amount = Column(Float, nullable=False)
     account = Column(String, nullable=False, index=True)
-    cost_center_id = Column(Integer, ForeignKey('cost_centers.id', ondelete="SET NULL"), nullable=True)
+    notes = Column(String, nullable=True)
+    cost_center_id = Column(Integer, ForeignKey('cost_centers.id'), nullable=False)
 
     # Many-to-one with cost center
     cost_center = relationship(

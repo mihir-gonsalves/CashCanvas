@@ -27,6 +27,7 @@ const INITIAL_STATE: CreateTransactionData = {
   spend_category_names: [],
   amount: 0,
   account: "",
+  notes: "",
 };
 
 export function AddTransactionDialog({
@@ -127,6 +128,13 @@ export function AddTransactionDialog({
             fullWidth
             InputLabelProps={{ shrink: true }}
             required
+          />
+
+          <TextField
+            label={FIELD_LABELS.NOTES}
+            value={transaction.notes}
+            onChange={(e) => handleFieldChange('notes', e.target.value)}
+            fullWidth
           />
         </Box>
       </DialogContent>

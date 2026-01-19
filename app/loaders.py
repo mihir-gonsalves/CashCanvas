@@ -75,6 +75,7 @@ def save_transactions(transactions: List[Dict[str, Any]], db_session: Optional[S
             - spend_categories: list[str] (spend category names, can be empty)
             - amount: float
             - account: str
+            - notes: str or None (optional notes)
 
         db_session: Optional SQLAlchemy session. If None, creates a new session.
     
@@ -104,6 +105,7 @@ def save_transactions(transactions: List[Dict[str, Any]], db_session: Optional[S
                 spend_categories = spend_categories,
                 amount = t["amount"],
                 account = t["account"],
+                notes = t["notes"],
             )
             
             db_session.add(db_transaction)

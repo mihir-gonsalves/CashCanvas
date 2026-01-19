@@ -25,6 +25,7 @@ def create_transaction(db: Session, txn: schemas.TransactionCreate) -> Transacti
         spend_categories = spend_categories,
         amount = txn.amount,
         account = txn.account,
+        notes = txn.notes,
     )
     
     db.add(new_tx)

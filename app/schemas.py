@@ -69,12 +69,20 @@ class TransactionBase(BaseModel):
     description: str = Field(min_length=1, max_length=200)
     amount: float
     account: str = Field(min_length=1, max_length=50)
+    notes: Optional[str] = Field(default=None, max_length=200)
 
     @field_validator("description", "account", mode="before")
     @classmethod
     def strip_and_validate(cls, v: Optional[str]) -> str:
         if not v or not v.strip():
             raise ValueError("Field cannot be empty or whitespace")
+        return v.strip()
+    
+    @field_validator("notes", mode="before")
+    @classmethod
+    def strip_notes(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or not v.strip():
+            return None
         return v.strip()
 
 
@@ -105,6 +113,7 @@ class TransactionUpdate(BaseModel):
     spend_category_names: Optional[List[str]] = None
     amount: Optional[float] = None
     account: Optional[str] = Field(default=None, min_length=1, max_length=50)
+    notes: Optional[str] = Field(default=None, max_length=200)
 
     @field_validator("description", "account", mode="before")
     @classmethod
@@ -125,6 +134,13 @@ class TransactionUpdate(BaseModel):
             return None
         cleaned = [name.strip() for name in v if name.strip()]
         return cleaned or ["Uncategorized"]
+    
+    @field_validator("notes", mode="before")
+    @classmethod
+    def update_notes(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        return v.strip() if v.strip() else None
 
 
 class TransactionWithID(TransactionBase):

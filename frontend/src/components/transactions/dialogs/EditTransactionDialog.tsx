@@ -61,6 +61,7 @@ export function EditTransactionDialog({
       account: editData.account,
       cost_center_name: costCenterInput.trim(),
       spend_category_names: parseSpendCategories(spendCategoryInput),
+      notes: editData.notes,
     };
 
     onSave(updateData);
@@ -132,6 +133,13 @@ export function EditTransactionDialog({
             onChange={(e) => handleFieldChange('date', e.target.value)}
             fullWidth
             InputLabelProps={{ shrink: true }}
+          />
+
+          <TextField
+            label={FIELD_LABELS.NOTES}
+            value={editData.notes || ""}
+            onChange={(e) => handleFieldChange('notes', e.target.value)}
+            fullWidth
           />
         </Box>
       </DialogContent>
