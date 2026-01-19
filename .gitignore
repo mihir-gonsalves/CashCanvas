@@ -25,7 +25,6 @@ data/
 
 # Environment variables
 .env
-.env.*
 
 # Node.js / Vite / React
 node_modules/

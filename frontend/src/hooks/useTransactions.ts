@@ -26,6 +26,7 @@ export interface Transaction {
   account: string;
   cost_center: CostCenter | null;
   spend_categories: SpendCategory[];
+  notes: string;
 }
 
 export interface CreateTransactionData {
@@ -35,6 +36,7 @@ export interface CreateTransactionData {
   account: string;
   cost_center_name?: string;
   spend_category_names?: string[];
+  notes?: string;
 }
 
 export interface UpdateTransactionData {
@@ -45,6 +47,7 @@ export interface UpdateTransactionData {
   account?: string;
   cost_center_name?: string;
   spend_category_names?: string[];
+  notes?: string;
 }
 
 // ========================

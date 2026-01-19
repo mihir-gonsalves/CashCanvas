@@ -117,6 +117,7 @@ def load_discover_csv(file_path: str):
                 "spend_categories": [],  # Empty by default - user can categorize later
                 "amount": amount,
                 "account": "Discover",
+                "notes": None,  # Institution CSVs don't have notes
             })
     
     return transactions
@@ -196,7 +197,8 @@ def load_schwab_csv(file_path: str):
                 "amount": amount,
                 "account": "Schwab Checking",
                 "cost_center": None,  # Schwab doesn't provide categories - will default to "Uncategorized"
-                "spend_categories": []  # Empty by default - user can categorize later
+                "spend_categories": [],  # Empty by default - user can categorize later
+                "notes": None,  # Institution CSVs don't have notes
             })
     
     return transactions
@@ -213,6 +215,7 @@ def load_custom_csv(file_path: str):
     - Account: Account name
     - Cost Center: Cost center name
     - Spend Categories: Comma-separated list of spend category names
+    - Notes: Optional notes field
     
     This format is used for exporting and re-importing transactions after bulk editing.
     Spend categories should be comma-separated (e.g., "Restaurant, Night Life").
@@ -238,7 +241,8 @@ def load_custom_csv(file_path: str):
             clean_header("Amount"): "Amount",
             clean_header("Account"): "Account",
             clean_header("Cost Center"): "Cost Center",
-            clean_header("Spend Categories"): "Spend Categories"
+            clean_header("Spend Categories"): "Spend Categories",
+            clean_header("Notes"): "Notes",
         }
         
         # Validate headers
@@ -255,6 +259,7 @@ def load_custom_csv(file_path: str):
         account_header = header_mapping.get(clean_header("Account"))
         cost_center_header = header_mapping.get(clean_header("Cost Center"))
         spend_categories_header = header_mapping.get(clean_header("Spend Categories"))
+        notes_header = header_mapping.get(clean_header("Notes"))
         
         for row_num, row in enumerate(reader, start=2):  # Start at 2 (header is row 1)
             try:
@@ -287,6 +292,11 @@ def load_custom_csv(file_path: str):
                         cleaned_cat = cat.strip()
                         if cleaned_cat:
                             spend_categories.append(cleaned_cat)
+
+                notes = None  # Default to None
+                if notes_header and notes_header in row:
+                    notes_str = row[notes_header].strip()
+                    notes = notes_str if notes_str else None # None if cell is empty
                 
                 transactions.append({
                     "date": transaction_date,
@@ -294,7 +304,8 @@ def load_custom_csv(file_path: str):
                     "amount": amount,
                     "account": row[account_header].strip(),
                     "cost_center": cost_center,
-                    "spend_categories": spend_categories
+                    "spend_categories": spend_categories,
+                    "notes": row[notes_header].strip(),
                 })
                 
             except Exception as e:
@@ -322,6 +333,7 @@ def parse_csv(file_path: str, institution: str):
         - account: str
         - cost_center: str or None (maps to cost center name)
         - spend_categories: list[str] (empty by default, user categorizes later)
+        - notes: str or None
     """
     institution = institution.lower().strip()
     

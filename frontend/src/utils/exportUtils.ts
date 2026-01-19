@@ -1,7 +1,7 @@
 // frontend/src/utils/exportUtils.ts
 import type { Transaction } from '../hooks/useTransactions';
 
-const CSV_HEADERS = ['Date', 'Description', 'Amount', 'Account', 'Cost Center', 'Spend Categories'];
+const CSV_HEADERS = ['Date', 'Description', 'Amount', 'Account', 'Cost Center', 'Spend Categories', 'Notes'];
 const UNCATEGORIZED = 'Uncategorized';
 
 function escapeCSVValue(value: string): string {
@@ -21,6 +21,7 @@ function formatTransactionRow(txn: Transaction): string[] {
     escapeCSVValue(txn.account),
     escapeCSVValue(costCenter),
     escapeCSVValue(spendCategories),
+    txn.notes ? escapeCSVValue(txn.notes) : '',
   ];
 }
 

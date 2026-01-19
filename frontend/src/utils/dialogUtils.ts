@@ -23,6 +23,7 @@ export const FIELD_LABELS = {
   COST_CENTER: "Cost Center",
   SPEND_CATEGORIES: "Spend Categories (comma-separated)",
   DATE: "Date",
+  NOTES: "Additional Notes"
 };
 
 export const PLACEHOLDERS = {
