@@ -1,9 +1,5 @@
 // frontend/src/components/filters/AmountRangeFilter.tsx
-import { TextField } from "@mui/material";
-
-// ========================
-// TYPE DEFINITIONS
-// ========================
+import { Box, TextField, InputAdornment } from '@mui/material';
 
 interface AmountRangeFilterProps {
   minAmount: string;
@@ -12,31 +8,6 @@ interface AmountRangeFilterProps {
   onMaxAmountChange: (value: string) => void;
 }
 
-// ========================
-// CONSTANTS
-// ========================
-
-const FIELD_CONFIG = {
-  MIN: {
-    LABEL: "Minimum Amount",
-    HELPER_TEXT: "Negative for expenses",
-  },
-  MAX: {
-    LABEL: "Maximum Amount",
-    HELPER_TEXT: "Positive for income",
-  },
-} as const;
-
-const FIELD_PROPS = {
-  TYPE: "number",
-  SIZE: "small" as const,
-  FULL_WIDTH: true,
-} as const;
-
-// ========================
-// MAIN COMPONENT
-// ========================
-
 export function AmountRangeFilter({
   minAmount,
   maxAmount,
@@ -44,26 +15,39 @@ export function AmountRangeFilter({
   onMaxAmountChange,
 }: AmountRangeFilterProps) {
   return (
-    <>
+    <Box sx={{ display: 'flex', gap: 2.5 }}>
       <TextField
-        label={FIELD_CONFIG.MIN.LABEL}
-        type={FIELD_PROPS.TYPE}
+        fullWidth
+        size="small"
+        type="number"
+        label="Min Amount"
         value={minAmount}
         onChange={(e) => onMinAmountChange(e.target.value)}
-        size={FIELD_PROPS.SIZE}
-        helperText={FIELD_CONFIG.MIN.HELPER_TEXT}
-        fullWidth={FIELD_PROPS.FULL_WIDTH}
+        InputProps={{
+          startAdornment: <InputAdornment position="start">$</InputAdornment>,
+        }}
+        sx={{
+          '& .MuiOutlinedInput-root': {
+            borderRadius: 2.5
+          },
+        }}
       />
-
       <TextField
-        label={FIELD_CONFIG.MAX.LABEL}
-        type={FIELD_PROPS.TYPE}
+        fullWidth
+        size="small"
+        type="number"
+        label="Max Amount"
         value={maxAmount}
         onChange={(e) => onMaxAmountChange(e.target.value)}
-        size={FIELD_PROPS.SIZE}
-        helperText={FIELD_CONFIG.MAX.HELPER_TEXT}
-        fullWidth={FIELD_PROPS.FULL_WIDTH}
+        InputProps={{
+          startAdornment: <InputAdornment position="start">$</InputAdornment>,
+        }}
+        sx={{
+          '& .MuiOutlinedInput-root': {
+            borderRadius: 2.5
+          },
+        }}
       />
-    </>
+    </Box>
   );
 }
