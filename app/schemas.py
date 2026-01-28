@@ -11,7 +11,7 @@ from typing import Optional, List
 
 
 class CostCenterBase(BaseModel):
-    name: str = Field(min_length=1, max_length=50, pattern=r"^[a-zA-Z0-9\s\-'/&]+$")
+    name: str = Field(min_length=1, max_length=50, pattern=r"^[a-zA-Z0-9\s\-'/&,]+$")
 
     @field_validator('name', mode='before')
     @classmethod
@@ -103,7 +103,7 @@ class TransactionCreate(TransactionBase):
         if not v or not any(name.strip() for name in v):
             return ["Uncategorized"]
         cleaned = [name.strip() for name in v if name.strip()]
-        return list(dict.fromkeys(cleaned))  # remove duplicates
+        return list(dict.fromkeys(cleaned))
 
 
 class TransactionUpdate(BaseModel):
@@ -152,6 +152,21 @@ class TransactionWithID(TransactionBase):
         from_attributes = True
 
 
+class TransactionCompact(BaseModel):
+    """Compact transaction representation with only IDs for relationships."""
+    id: int
+    date: datetime.date
+    description: str
+    amount: float
+    account: str
+    cost_center_id: int
+    spend_category_ids: List[int]
+    notes: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
 # ============================================
 # RESPONSE WRAPPERS
 # ============================================
@@ -162,6 +177,17 @@ class TransactionListResponse(BaseModel):
     count: int
 
 
+class PaginatedTransactionResponse(BaseModel):
+    """Paginated response with compact transactions and metadata."""
+    transactions: List[TransactionCompact]
+    cost_centers: List[CostCenterWithID]
+    spend_categories: List[SpendCategoryWithID]
+    page: int
+    page_size: int
+    total: int
+    total_pages: int
+
+
 class CostCenterListResponse(BaseModel):
     cost_centers: List[CostCenterWithID]
     count: int
@@ -170,3 +196,63 @@ class CostCenterListResponse(BaseModel):
 class SpendCategoryListResponse(BaseModel):
     spend_categories: List[SpendCategoryWithID]
     count: int
+
+
+# ============================================
+# ANALYTICS SCHEMAS
+# ============================================
+
+
+class BalanceTimelinePoint(BaseModel):
+    """Individual point in the balance timeline."""
+    date: datetime.date
+    balance: float
+    description: str
+    amount: float
+    cost_center_name: str
+
+
+class MonthlySpending(BaseModel):
+    """Spending aggregated by month with cost center breakdown."""
+    month: str  # Format: "2026-01"
+    total: float
+    expense_total: float
+    income_total: float
+    transaction_count: int
+    by_cost_center: dict[str, float] = Field(default_factory=dict)  # NEW - for tooltips
+
+
+class CostCenterSpending(BaseModel):
+    """Spending aggregated by cost center."""
+    cost_center_id: int
+    cost_center_name: str
+    total: float
+    expense_total: float
+    income_total: float
+    transaction_count: int
+
+
+class SpendCategoryStats(BaseModel):
+    """Spending aggregated by spend category."""
+    spend_category_id: int
+    spend_category_name: str
+    total: float
+    expense_total: float
+    income_total: float
+    transaction_count: int
+
+
+class AnalyticsResponse(BaseModel):
+    """Complete analytics response with balance timeline."""
+    total_spent: float
+    total_income: float
+    total_cash: float  # Final balance after all filtered transactions
+    total_transactions: int
+    total_cost_centers: int
+    total_spend_categories: int
+    avg_expense: float
+    avg_income: float
+    monthly_spending: List[MonthlySpending]
+    cost_center_spending: List[CostCenterSpending]
+    spend_category_stats: List[SpendCategoryStats]
+    balance_timeline: List[BalanceTimelinePoint] = Field(default_factory=list)  # NEW

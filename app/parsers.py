@@ -2,6 +2,9 @@
 import csv
 import re
 from datetime import datetime
+from typing import Dict, List
+from pydantic import ValidationError
+from app import schemas
 
 
 def clean_header(header):
@@ -17,8 +20,7 @@ def clean_header(header):
 
 
 def validate_headers(expected_headers, actual_headers, source_name):
-    """Validate that all expected headers are present in the CSV. Normalizes headers by removing all whitespace for comparison."""
-    # Create normalized versions for comparison
+    """Validate that all expected headers are present in the CSV."""
     normalized_actual = {clean_header(h): h for h in actual_headers if h}
     normalized_expected = {clean_header(h): h for h in expected_headers}
     
@@ -34,23 +36,83 @@ def validate_headers(expected_headers, actual_headers, source_name):
         )
 
 
-def clean_currency_string(value):
+def clean_currency_string(value, row_num=None):
     """Remove currency symbols, commas, and whitespace from monetary values."""
     if not value or value.strip() == "":
-        return 0.0
+        error_msg = f"Empty or invalid currency value: '{value}'"
+        if row_num:
+            error_msg = f"Row {row_num}: {error_msg}"
+        raise ValueError(error_msg)
     
     # Remove dollar signs, commas, and whitespace
     cleaned = re.sub(r'[$,\s]', '', str(value).strip())
     
-    # Handle empty string after cleaning
     if not cleaned:
-        return 0.0
+        error_msg = f"Empty or invalid currency value: '{value}'"
+        if row_num:
+            error_msg = f"Row {row_num}: {error_msg}"
+        raise ValueError(error_msg)
     
     try:
         return float(cleaned)
     except ValueError:
-        print(f"Warning: Could not convert '{value}' to float, using 0.0")
-        return 0.0
+        error_msg = f"Invalid currency value: '{value}'. Expected a number."
+        if row_num:
+            error_msg = f"Row {row_num}: {error_msg}"
+        raise ValueError(error_msg)
+
+
+def _parse_headers(reader, expected_headers_map: Dict[str, str], institution_name: str) -> Dict[str, str]:
+    """
+    Parse and validate CSV headers.
+    
+    Args:
+        reader: CSV DictReader
+        expected_headers_map: Dict mapping clean names to display names
+            e.g., {"date": "Trans. Date", "description": "Description"}
+        institution_name: Name for error messages
+    
+    Returns:
+        Dict mapping clean names to actual header names in CSV
+    """
+    if not reader.fieldnames:
+        raise ValueError("CSV file appears to be empty")
+    
+    original_headers = [h.strip() for h in reader.fieldnames]
+    header_mapping = {clean_header(h): h for h in original_headers}
+    
+    validate_headers(
+        list(expected_headers_map.values()),
+        original_headers,
+        institution_name
+    )
+    
+    return {
+        clean_key: header_mapping[clean_header(display_name)]
+        for clean_key, display_name in expected_headers_map.items()
+    }
+
+
+def _validate_transaction_data(txn_data: dict, row_num: int) -> None:
+    """
+    Validate transaction data with Pydantic schema.
+    
+    Args:
+        txn_data: Transaction dictionary
+        row_num: Row number for error messages
+    
+    Raises:
+        ValueError: If validation fails
+    """
+    try:
+        schemas.TransactionCreate(**txn_data)
+    except ValidationError as e:
+        errors = []
+        for error in e.errors():
+            field = error['loc'][0] if error['loc'] else 'unknown'
+            msg = error['msg']
+            errors.append(f"{field}: {msg}")
+        raise ValueError(f"Row {row_num} validation failed: {'; '.join(errors)}")
 
 
 def load_discover_csv(file_path: str):
@@ -64,61 +126,68 @@ def load_discover_csv(file_path: str):
     - Category: Discover's category (maps to cost_center)
     """
     transactions = []
+    errors = []
     
     with open(file_path, newline="", encoding="utf-8-sig") as csvfile:
         # Read the CSV with original headers (utf-8-sig automatically removes BOM)
         reader = csv.DictReader(csvfile)
         
-        if not reader.fieldnames:
-            raise ValueError("CSV file appears to be empty")
+        headers = _parse_headers(reader, {
+            "date": "Trans. Date",
+            "description": "Description",
+            "amount": "Amount",
+            "category": "Category"
+        }, "Discover")
         
-        # Clean any remaining special characters from headers
-        original_headers = [h.strip() for h in reader.fieldnames]
-        
-        # Create a mapping from cleaned headers to original headers
-        header_mapping = {clean_header(h): h for h in original_headers}
-        
-        # Expected headers (normalized)
-        expected_normalized = {
-            clean_header("Trans. Date"): "Trans. Date",
-            clean_header("Description"): "Description",
-            clean_header("Amount"): "Amount",
-            clean_header("Category"): "Category"
-        }
-        
-        # Validate that all expected headers exist
-        validate_headers(
-            list(expected_normalized.values()),
-            original_headers,
-            "Discover"
+        for row_num, row in enumerate(reader, start=2):
+            try:
+                # Validate and parse date
+                date_str = row[headers["date"]].strip()
+                if not date_str:
+                    raise ValueError("Date is empty")
+                date_obj = datetime.strptime(date_str, "%m/%d/%Y").date()
+                
+                # Validate description
+                description = row[headers["description"]].strip()
+                if not description:
+                    raise ValueError("Description is empty")
+                
+                # Validate and parse amount
+                raw_amount_str = row[headers["amount"]].strip()
+                if not raw_amount_str:
+                    raise ValueError("Amount is empty")
+                raw_amount = clean_currency_string(raw_amount_str, row_num)
+                
+                # Get cost center
+                cost_center = row[headers["category"]].strip() if row[headers["category"]].strip() else "Uncategorized"
+                
+                # For Discover: negative amounts in CSV = credits (positive in ledger)
+                #               positive amounts in CSV = expenses (negative in ledger)
+                amount = -raw_amount
+                
+                txn_data = {
+                    "date": date_obj,
+                    "description": description,
+                    "cost_center_name": cost_center,
+                    "spend_category_names": [],
+                    "amount": amount,
+                    "account": "Discover",
+                    "notes": None,
+                }
+                
+                # Validate with Pydantic
+                _validate_transaction_data(txn_data, row_num)
+                
+                transactions.append(txn_data)
+                
+            except Exception as e:
+                errors.append(f"Row {row_num}: {str(e)}")
+    
+    if errors:
+        raise ValueError(
+            f"CSV validation failed ({len(errors)} error(s)):\n" + 
+            "\n".join(errors[:20])  # Limit to first 20 errors
         )
-        
-        # Find the actual header names in the CSV (with whatever whitespace they have)
-        date_header = header_mapping.get(clean_header("Trans. Date"))
-        desc_header = header_mapping.get(clean_header("Description"))
-        amount_header = header_mapping.get(clean_header("Amount"))
-        category_header = header_mapping.get(clean_header("Category"))
-        
-        for row in reader:
-            # Parse amount
-            raw_amount = clean_currency_string(row[amount_header])
-            
-            # Get cost center from Discover's Category column
-            cost_center = row[category_header].strip() if row[category_header].strip() else "Uncategorized"
-            
-            # For Discover: negative amounts in CSV = credits (positive in ledger)
-            #               positive amounts in CSV = expenses (negative in ledger)
-            amount = -raw_amount
-            
-            transactions.append({
-                "date": datetime.strptime(row[date_header].strip(), "%m/%d/%Y").date(),
-                "description": row[desc_header].strip(),
-                "cost_center": cost_center,
-                "spend_categories": [],  # Empty by default - user can categorize later
-                "amount": amount,
-                "account": "Discover",
-                "notes": None,  # Institution CSVs don't have notes
-            })
     
     return transactions
 
@@ -140,76 +209,76 @@ def load_schwab_csv(file_path: str):
     Note: Schwab doesn't provide categories, so cost_center defaults to "Uncategorized".
     """
     transactions = []
+    errors = []
     
     with open(file_path, newline="", encoding="utf-8-sig") as csvfile:
         reader = csv.DictReader(csvfile)
         
-        if not reader.fieldnames:
-            raise ValueError("CSV file appears to be empty")
+        headers = _parse_headers(reader, {
+            "date": "Date",
+            "description": "Description",
+            "withdrawal": "Withdrawal",
+            "deposit": "Deposit"
+        }, "Schwab Checking")
         
-        # Clean any remaining special characters from headers
-        original_headers = [h.strip() for h in reader.fieldnames]
-        
-        # Create a mapping from cleaned headers to original headers
-        header_mapping = {clean_header(h): h for h in original_headers}
-        
-        # Expected headers (normalized) - only validate the ones needed
-        expected_normalized = {
-            clean_header("Date"): "Date",
-            clean_header("Description"): "Description",
-            clean_header("Withdrawal"): "Withdrawal",
-            clean_header("Deposit"): "Deposit"
-        }
-        
-        # Validate headers
-        validate_headers(
-            list(expected_normalized.values()),
-            original_headers,
-            "Schwab Checking"
+        for row_num, row in enumerate(reader, start=2):
+            try:
+                # Validate and parse date
+                date_str = row[headers["date"]].strip()
+                if not date_str:
+                    raise ValueError("Date is empty")
+                date_obj = datetime.strptime(date_str, "%m/%d/%Y").date()
+                
+                # Validate description
+                description = row[headers["description"]].strip()
+                if not description:
+                    raise ValueError("Description is empty")
+                
+                # Process amounts
+                withdrawal_str = row.get(headers["withdrawal"], "").strip()
+                deposit_str = row.get(headers["deposit"], "").strip()
+                
+                # Determine amount
+                if withdrawal_str and withdrawal_str != "":
+                    amount = -clean_currency_string(withdrawal_str, row_num)
+                elif deposit_str and deposit_str != "":
+                    amount = clean_currency_string(deposit_str, row_num)
+                else:
+                    raise ValueError("Both Withdrawal and Deposit are empty")
+                
+                txn_data = {
+                    "date": date_obj,
+                    "description": description,
+                    "amount": amount,
+                    "account": "Schwab Checking",
+                    "cost_center_name": None,
+                    "spend_category_names": [],
+                    "notes": None,
+                }
+                
+                # Validate with Pydantic
+                _validate_transaction_data(txn_data, row_num)
+                
+                transactions.append(txn_data)
+                
+            except Exception as e:
+                errors.append(f"Row {row_num}: {str(e)}")
+    
+    if errors:
+        raise ValueError(
+            f"CSV validation failed ({len(errors)} error(s)):\n" + 
+            "\n".join(errors[:20])
         )
-        
-        # Find the actual header names in the CSV
-        date_header = header_mapping.get(clean_header("Date"))
-        desc_header = header_mapping.get(clean_header("Description"))
-        withdrawal_header = header_mapping.get(clean_header("Withdrawal"))
-        deposit_header = header_mapping.get(clean_header("Deposit"))
-        
-        for row in reader:
-            # Clean and process amounts
-            withdrawal_str = row.get(withdrawal_header, "").strip()
-            deposit_str = row.get(deposit_header, "").strip()
-            description = row[desc_header].strip()
-            
-            # Determine amount
-            if withdrawal_str and withdrawal_str != "":
-                # Withdrawals are expenses (negative in DB)
-                amount = -clean_currency_string(withdrawal_str)
-            elif deposit_str and deposit_str != "":
-                # Deposits are income (positive in DB)
-                amount = clean_currency_string(deposit_str)
-            else:
-                # Skip rows with no amount (shouldn't happen but just in case)
-                amount = 0.0
-            
-            transactions.append({
-                "date": datetime.strptime(row[date_header].strip(), "%m/%d/%Y").date(),
-                "description": description,
-                "amount": amount,
-                "account": "Schwab Checking",
-                "cost_center": None,  # Schwab doesn't provide categories - will default to "Uncategorized"
-                "spend_categories": [],  # Empty by default - user can categorize later
-                "notes": None,  # Institution CSVs don't have notes
-            })
     
     return transactions
 
 
-def load_custom_csv(file_path: str):
+def load_cashcanvas_csv(file_path: str):
     """
-    Parse custom export CSV format from this app.
+    Parse custom CashCanvas export CSV format from this app.
     
     Expected columns:
-    - Date: Transaction date (YYYY-MM-DD)
+    - Date: Transaction date (YYYY-MM-DD or MM/DD/YYYY)
     - Description: Transaction description
     - Amount: Transaction amount (negative = expense, positive = income)
     - Account: Account name
@@ -221,67 +290,58 @@ def load_custom_csv(file_path: str):
     Spend categories should be comma-separated (e.g., "Restaurant, Night Life").
     """
     transactions = []
+    errors = []
     
     with open(file_path, newline="", encoding="utf-8-sig") as csvfile:
         reader = csv.DictReader(csvfile)
         
-        if not reader.fieldnames:
-            raise ValueError("CSV file appears to be empty")
+        headers = _parse_headers(reader, {
+            "date": "Date",
+            "description": "Description",
+            "amount": "Amount",
+            "account": "Account",
+            "cost_center": "Cost Center",
+            "spend_categories": "Spend Categories",
+            "notes": "Notes",
+        }, "CashCanvas Export")
         
-        # Clean any remaining special characters from headers
-        original_headers = [h.strip() for h in reader.fieldnames]
-        
-        # Create a mapping from cleaned headers to original headers
-        header_mapping = {clean_header(h): h for h in original_headers}
-        
-        # Expected headers (normalized)
-        expected_normalized = {
-            clean_header("Date"): "Date",
-            clean_header("Description"): "Description",
-            clean_header("Amount"): "Amount",
-            clean_header("Account"): "Account",
-            clean_header("Cost Center"): "Cost Center",
-            clean_header("Spend Categories"): "Spend Categories",
-            clean_header("Notes"): "Notes",
-        }
-        
-        # Validate headers
-        validate_headers(
-            list(expected_normalized.values()),
-            original_headers,
-            "Custom Export"
-        )
-        
-        # Find the actual header names in the CSV
-        date_header = header_mapping.get(clean_header("Date"))
-        desc_header = header_mapping.get(clean_header("Description"))
-        amount_header = header_mapping.get(clean_header("Amount"))
-        account_header = header_mapping.get(clean_header("Account"))
-        cost_center_header = header_mapping.get(clean_header("Cost Center"))
-        spend_categories_header = header_mapping.get(clean_header("Spend Categories"))
-        notes_header = header_mapping.get(clean_header("Notes"))
-        
-        for row_num, row in enumerate(reader, start=2):  # Start at 2 (header is row 1)
+        for row_num, row in enumerate(reader, start=2):
             try:
-                # Parse date - handle both YYYY-MM-DD and MM/DD/YYYY formats
-                date_str = row[date_header].strip()
+                # Validate and parse date
+                date_str = row[headers["date"]].strip()
+                if not date_str:
+                    raise ValueError("Date is empty")
+                
                 try:
                     # Try ISO format first (YYYY-MM-DD)
-                    transaction_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+                    date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
                 except ValueError:
                     # Fall back to MM/DD/YYYY
-                    transaction_date = datetime.strptime(date_str, "%m/%d/%Y").date()
+                    date_obj = datetime.strptime(date_str, "%m/%d/%Y").date()
                 
-                # Parse amount
-                amount = clean_currency_string(row[amount_header])
+                # Validate description
+                description = row[headers["description"]].strip()
+                if not description:
+                    raise ValueError("Description is empty")
                 
-                # Get cost center
-                cost_center = row[cost_center_header].strip() if row[cost_center_header].strip() else None
+                # Validate and parse amount
+                amount_str = row[headers["amount"]].strip()
+                if not amount_str:
+                    raise ValueError("Amount is empty")
+                amount = clean_currency_string(amount_str, row_num)
+                
+                # Validate account
+                account = row[headers["account"]].strip()
+                if not account:
+                    raise ValueError("Account is empty")
+                
+                # Parse cost center
+                cost_center = row[headers["cost_center"]].strip() if row[headers["cost_center"]].strip() else None
                 if cost_center and cost_center.lower() == "uncategorized":
-                    cost_center = None  # Will default to "Uncategorized" in loader
+                    cost_center = None
                 
-                # Parse spend categories (comma-separated)
-                spend_categories_str = row[spend_categories_header].strip()
+                # Parse spend categories
+                spend_categories_str = row[headers["spend_categories"]].strip()
                 spend_categories = []
                 
                 if spend_categories_str and spend_categories_str.lower() != "uncategorized":
@@ -292,27 +352,36 @@ def load_custom_csv(file_path: str):
                         cleaned_cat = cat.strip()
                         if cleaned_cat:
                             spend_categories.append(cleaned_cat)
-
-                notes = None  # Default to None
-                if notes_header and notes_header in row:
-                    notes_str = row[notes_header].strip()
-                    notes = notes_str if notes_str else None # None if cell is empty
                 
-                transactions.append({
-                    "date": transaction_date,
-                    "description": row[desc_header].strip(),
+                # Parse notes
+                notes = None
+                if headers["notes"] in row:
+                    notes_str = row[headers["notes"]].strip()
+                    notes = notes_str if notes_str else None
+                
+                txn_data = {
+                    "date": date_obj,
+                    "description": description,
                     "amount": amount,
-                    "account": row[account_header].strip(),
-                    "cost_center": cost_center,
-                    "spend_categories": spend_categories,
-                    "notes": row[notes_header].strip(),
-                })
+                    "account": account,
+                    "cost_center_name": cost_center,
+                    "spend_category_names": spend_categories,
+                    "notes": notes,
+                }
+                
+                # Validate with Pydantic
+                _validate_transaction_data(txn_data, row_num)
+                
+                transactions.append(txn_data)
                 
             except Exception as e:
-                # Provide helpful error message with row number
-                print(f"Warning: Error parsing row {row_num}: {str(e)}")
-                # Continue processing other rows
-                continue
+                errors.append(f"Row {row_num}: {str(e)}")
+    
+    if errors:
+        raise ValueError(
+            f"CSV validation failed ({len(errors)} error(s)):\n" + 
+            "\n".join(errors[:20])
+        )
     
     return transactions
 
@@ -323,17 +392,13 @@ def parse_csv(file_path: str, institution: str):
     
     Args:
         file_path: Path to the CSV file
-        institution: Institution name (e.g., 'discover', 'schwab', 'custom')
+        institution: Institution name (e.g., 'discover', 'schwab', 'cashcanvas')
     
     Returns:
-        List of transaction dictionaries with keys:
-        - date: datetime.date
-        - description: str
-        - amount: float (negative = expense, positive = income/credit)
-        - account: str
-        - cost_center: str or None (maps to cost center name)
-        - spend_categories: list[str] (empty by default, user categorizes later)
-        - notes: str or None
+        List of validated transaction dictionaries
+    
+    Raises:
+        ValueError: If institution is unknown or CSV validation fails
     """
     institution = institution.lower().strip()
     
@@ -341,7 +406,10 @@ def parse_csv(file_path: str, institution: str):
         return load_discover_csv(file_path)
     elif institution in ["schwab", "schwab checking"]:
         return load_schwab_csv(file_path)
-    elif institution == "custom":
-        return load_custom_csv(file_path)
+    elif institution == "cashcanvas":
+        return load_cashcanvas_csv(file_path)
     else:
-        raise ValueError(f"No parser available for institution: {institution}")
+        raise ValueError(
+            f"Unknown institution: '{institution}'. "
+            f"Supported institutions: 'discover', 'schwab', 'cashcanvas'"
+        )

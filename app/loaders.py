@@ -71,8 +71,8 @@ def save_transactions(transactions: List[Dict[str, Any]], db_session: Optional[S
         transactions: List of transaction dictionaries with keys:
             - date: datetime.date
             - description: str
-            - cost_center: str or None (cost center name)
-            - spend_categories: list[str] (spend category names, can be empty)
+            - cost_center_name: str or None (cost center name)  # FIXED: was "cost_center"
+            - spend_category_names: list[str] (spend category names, can be empty)  # FIXED: was "spend_categories"
             - amount: float
             - account: str
             - notes: str or None (optional notes)
@@ -91,10 +91,10 @@ def save_transactions(transactions: List[Dict[str, Any]], db_session: Optional[S
     try:
         for t in transactions:
             # Get or create cost center
-            cost_center = get_or_create_cost_center(db_session, t.get("cost_center"))
+            cost_center = get_or_create_cost_center(db_session, t.get("cost_center_name"))
             
             # Get or create spend categories
-            spend_category_names = t.get("spend_categories", [])
+            spend_category_names = t.get("spend_category_names", [])
             spend_categories = get_or_create_spend_categories(db_session, spend_category_names)
             
             # Create transaction
