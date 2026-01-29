@@ -48,11 +48,12 @@ This application helps you track and visualize your personal finances by:
 - **Uvicorn** - ASGI web server
 
 ### Frontend (React/TypeScript)
-- **React 19** - UI framework
+- **React 18** - UI framework
 - **TypeScript** - Type safety
 - **Vite** - Build tool and dev server
-- **Material UI (MUI)** - UI components
-- **React Query** - Server state management
+- **Material UI (MUI) v7** - UI components
+- **MUI X Charts v8** - charts
+- **Tanstack Query** - Server state management
 - **Axios** - HTTP client
 
 ## Getting Started
@@ -419,6 +420,7 @@ If **any** row in a CSV file fails validation, the **entire upload is rejected**
 │       ├── api/               # API client
 │       ├── components/        # React components
 │       ├── hooks/             # Custom hooks
+│       ├── types/             # API Response types
 │       └── utils/             # Utility functions
 ├── transactions.db            # SQLite database (auto-created)
 ├── requirements.txt           # Python dependencies
@@ -427,7 +429,7 @@ If **any** row in a CSV file fails validation, the **entire upload is rejected**
 
 ### Key Principles
 1. **Minimalism**: Only build what's needed, avoid feature creep
-2. **DRY**: Don't repeat yourself - extract common patterns
+2. **DRY**: Don't repeat yourself - extract common patterns (excluding styling)
 3. **Clear boundaries**: Each module has one responsibility
 4. **Fail fast**: Validate early, provide clear error messages
 5. **User agency**: Users maintain control over their financial data

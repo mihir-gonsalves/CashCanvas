@@ -55,7 +55,7 @@ export function DeleteConfirmDialog({
         Delete Transaction
       </DialogTitle>
 
-      <DialogContent sx={{ mt: 2, mb: 2 }}>
+      <DialogContent sx={{ my: 2, overflow: 'hidden' }}>
         {!!error && (
           <Alert severity="error" sx={{ mb: 2, borderRadius: 2.5 }}>
             {getErrorMessage(error)}

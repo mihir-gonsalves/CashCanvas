@@ -117,7 +117,7 @@ export function TransactionEditDialog({
         Edit Transaction
       </DialogTitle>
 
-      <DialogContent sx={{ mt: 2, mb: 2 }}>
+      <DialogContent sx={{ my: 2, overflow: 'hidden' }}>
         {!!error && (
           <Alert severity="error" sx={{ mb: 2, borderRadius: 2.5 }}>
             {getErrorMessage(error)}
@@ -206,7 +206,7 @@ export function TransactionEditDialog({
               label="Amount"
               value={formData.amount}
               onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-              helperText="Negative for expenses (e.g., -45.50) | Positive for income"
+              helperText="Negative for expenses (e.g., -45.50) and Positive for income"
               required
               inputProps={{ step: '0.1' }}
               placeholder="e.g., -45.50"
@@ -238,7 +238,7 @@ export function TransactionEditDialog({
           <TextField
             fullWidth
             multiline
-            rows={3}
+            rows={2}
             label="Notes (Optional)"
             value={formData.notes}
             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}

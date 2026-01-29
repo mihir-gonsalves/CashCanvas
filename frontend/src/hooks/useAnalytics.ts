@@ -20,7 +20,7 @@ import type { TransactionFilters, Analytics } from '@/types';
  * - Charts should use this data directly without additional API calls
  * 
  * @param filters - Same filters as useTransactions (shared filter state)
- * @returns React Query result with Analytics data
+ * @returns Tanstack Query result with Analytics data
  */
 export function useAnalytics(filters: TransactionFilters = {}) {
   return useQuery<Analytics, Error>({

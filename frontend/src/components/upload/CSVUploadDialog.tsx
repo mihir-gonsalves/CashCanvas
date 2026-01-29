@@ -90,7 +90,7 @@ export function CSVUploadDialog({ open, onClose }: CSVUploadDialogProps) {
           // Reset form and close dialog on success
           setTimeout(() => {
             handleClose();
-          }, 1500); // Show success message briefly before closing
+          }, 10000); // Show success message briefly before closing
         },
       }
     );
@@ -98,13 +98,6 @@ export function CSVUploadDialog({ open, onClose }: CSVUploadDialogProps) {
 
   const handleClose = () => {
     if (uploadMutation.isPending) return;
-    
-    // Reset state
-    setInstitution('');
-    setSelectedFile(null);
-    setFileError(null);
-    uploadMutation.reset();
-    
     onClose();
   };
 
@@ -117,6 +110,14 @@ export function CSVUploadDialog({ open, onClose }: CSVUploadDialogProps) {
       onClose={uploadMutation.isPending ? undefined : handleClose}
       maxWidth="sm"
       fullWidth
+      TransitionProps={{
+        onExited: () => {
+          setInstitution('');
+          setSelectedFile(null);
+          setFileError(null);
+          uploadMutation.reset();
+        },
+      }}
       PaperProps={{
         sx: {
           borderRadius: 5,
@@ -139,13 +140,13 @@ export function CSVUploadDialog({ open, onClose }: CSVUploadDialogProps) {
         Upload CSV
       </DialogTitle>
 
-      <DialogContent sx={{ mt: 2, mb: 2 }}>
+      <DialogContent sx={{ my: 2, overflow: 'hidden' }}>
         {/* Success message */}
         {isSuccess && (
           <Alert
             severity="success"
             icon={<CheckCircle />}
-            sx={{ mb: 2, borderRadius: 2.5 }}
+            sx={{ mb: -2, borderRadius: 2.5 }}
           >
             Successfully imported {uploadMutation.data?.count} transactions from {uploadMutation.data?.institution}
           </Alert>
@@ -153,7 +154,7 @@ export function CSVUploadDialog({ open, onClose }: CSVUploadDialogProps) {
 
         {/* Error message */}
         {uploadMutation.isError && (
-          <Alert severity="error" sx={{ mb: 2, borderRadius: 2.5 }}>
+          <Alert severity="error" sx={{ mb: 1, borderRadius: 2.5 }}>
             <Box
               component="pre"
               sx={{
@@ -169,15 +170,8 @@ export function CSVUploadDialog({ open, onClose }: CSVUploadDialogProps) {
           </Alert>
         )}
 
-        {/* File validation error */}
-        {fileError && (
-          <Alert severity="error" sx={{ mb: 2, borderRadius: 2.5 }}>
-            {fileError}
-          </Alert>
-        )}
-
         {!isSuccess && (
-          <Box sx={{ display: 'flex', flexDirection: 'column',  pt: 2, gap: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', pt: 2, gap: 3 }}>
             {/* Institution selector */}
             <FormControl fullWidth>
               <InputLabel>Institution</InputLabel>
@@ -262,18 +256,35 @@ export function CSVUploadDialog({ open, onClose }: CSVUploadDialogProps) {
             <Box
               sx={{
                 p: 2,
-                backgroundColor: '#eff6ff',
-                border: '1px solid #bfdbfe',
+                backgroundColor: '#c4e2ff',
+                border: '1px solid #b4d2f7',
                 borderRadius: 2.5,
               }}
             >
-              <Typography variant="caption" sx={{ color: '#1e40af', fontWeight: 500, display: 'block', mb: 1 }}>
+              <Typography variant="body2" sx={{ color: '#1f3a5f', fontSize: '0.85rem', fontWeight: 500, mb: 1 }}>
                 Instructions
               </Typography>
-              <Typography variant="body2" sx={{ color: '#1e3a8a', fontSize: '0.875rem' }}>
+              <Typography variant="body2" sx={{ color: '#1f3a5f', fontSize: '0.825rem' }}>
                 1. Select the institution that matches your CSV file<br />
                 2. Choose your CSV file (max 10MB)<br />
                 3. Click "Upload" to import transactions
+              </Typography>
+            </Box>
+
+            {/* Warning */}
+            <Box
+              sx={{
+                p: 2,
+                backgroundColor: '#fef3c7',
+                border: '1px solid #f6e8b2',
+                borderRadius: 2.5,
+              }}
+            >
+              <Typography variant="body2" sx={{ color: '#92400e', fontSize: '0.85rem', fontWeight: 500, mb: 1 }}>
+                Warning
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#92400e', fontSize: '0.825rem' }}>
+                Duplicate transactions will be created if you upload the same file multiple times.
               </Typography>
             </Box>
           </Box>
