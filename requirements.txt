@@ -12,8 +12,8 @@ pydantic==2.11.7
 python-multipart==0.0.20
 
 # Testing
-pytest==8.4.1
-httpx==0.28.1  # For testing FastAPI endpoints
+# pytest==8.4.1
+# httpx==0.28.1  # For testing FastAPI endpoints
 
 # Optional: Environment Variables (if you need .env file support)
 # python-dotenv==1.1.1

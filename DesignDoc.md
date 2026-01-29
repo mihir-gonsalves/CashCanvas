@@ -1,4 +1,4 @@
-# Personal Finance Tracker
+# CashCanvas
 
 ## Project Overview
 
@@ -71,13 +71,13 @@ POST /transactions/upload-csv   # CSV upload
 ## Frontend Architecture
 
 ### Tech Stack (Fixed)
-- **React 19** with **TypeScript**
+- **React 18** with **TypeScript**
 - **Vite** (dev server at `http://localhost:5173`)
-- **Material UI (MUI)** for UI components
+- **Material UI (MUI) v7** for UI components
 - **MUI X Data Grid** (MIT version, 100 row limit)
-- **MUI X Charts** for bar/donut charts
+- **MUI X Charts v8** for bar/donut charts
 - **Lightweight Charts** (TradingView) for balance timeline
-- **React Query** for server state
+- **Tanstack Query** for server state
 - **Axios** for HTTP
 - **date-fns** for date formatting
 - **react-error-boundary** for error handling
@@ -85,7 +85,7 @@ POST /transactions/upload-csv   # CSV upload
 ### UI Layout
 ```
 ┌─────────────────────────────────────────┐
-│ Header: "Personal Finance Tracker"      │
+│ Header: "CashCanvas"                    │
 ├─────────────────────────────────────────┤
 │ Filters Panel (collapsible, pushes down)│
 ├─────────────────────────────────────────┤
@@ -133,7 +133,7 @@ POST /transactions/upload-csv   # CSV upload
 
 ## State Management
 
-### Server State (React Query)
+### Server State (Tanstack Query)
 ```typescript
 // Queries
 useTransactions(filters, page, pageSize) // DataGrid
@@ -256,7 +256,7 @@ frontend/src/
 
 ### ✅ Phase 0-3: Foundation & Transaction Grid (COMPLETE)
 - Type definitions and API client
-- React Query setup with proper caching
+- Tanstack Query setup with proper caching
 - Layout components (header, filters, workspace, analytics panel)
 - Complete filter system with 4-column grid
 - Transaction CRUD with MUI DataGrid
@@ -307,7 +307,7 @@ getChartColor(index: number)                 // Access chart palette
 6. **Desktop-only** - No mobile optimizations needed
 7. **Fixed DataGrid row height** - Enables virtualization (critical for 1000+ rows)
 8. **Memoized enrichment** - Specific dependencies prevent unnecessary re-computation
-9. **No over-engineering** - Skip error boundaries, optimistic updates, keyboard shortcuts (not needed for personal project)
+9. **No over-engineering** - Skip optimistic updates, keyboard shortcuts (not needed for personal project)
 
 ---
 
@@ -337,5 +337,5 @@ const display = { date: formatDate(txn.date), amount: formatCurrency(txn.amount)
 - [MUI Documentation](https://mui.com/material-ui/)
 - [MUI X Charts](https://mui.com/x/react-charts/)
 - [Lightweight Charts](https://tradingview.github.io/lightweight-charts/)
-- [React Query](https://tanstack.com/query/latest)
+- [Tanstack Query](https://tanstack.com/query/latest)
 - [date-fns](https://date-fns.org/)

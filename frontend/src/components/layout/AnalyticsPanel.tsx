@@ -50,9 +50,10 @@ export function AnalyticsPanel({ filters, view, onViewChange }: AnalyticsPanelPr
             color: '#1f3a5f',
             textTransform: 'none',
             height: 50,
-            borderRadius: 3,
+            borderRadius: 2.5,
             mx: -1,
             '&:hover': {
+              color: '#0e2238',
               backgroundColor: 'transparent',
             },
           }}

@@ -45,7 +45,7 @@ apiClient.interceptors.response.use(
       data: error.response?.data,
     });
 
-    // Re-throw for React Query to handle
+    // Re-throw for Tanstack Query to handle
     throw error;
   }
 );

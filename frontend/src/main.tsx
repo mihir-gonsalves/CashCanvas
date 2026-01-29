@@ -13,7 +13,7 @@ import App from './App';
 import { ErrorFallback } from './ErrorFallback';
 
 // ============================================================================
-// React Query Client Configuration
+// Tanstack Query Client Configuration
 // ============================================================================
 
 const queryClient = new QueryClient({
